@@ -12,6 +12,10 @@ export const loginUser = createAsyncThunk(
       const response = await axios.post(`${API_URL}/login/`, userData);
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
+      // Save user ID and username in local storage
+      localStorage.setItem('user_id', response.data.id);
+      localStorage.setItem('username', response.data.username);
+      localStorage.setItem('isAuthenticated', true);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -38,7 +42,9 @@ const authSlice = createSlice({
     user: null,
     accessToken: localStorage.getItem('access_token'),
     refreshToken: localStorage.getItem('refresh_token'),
-    isAuthenticated: false,
+    userId: localStorage.getItem('user_id'), // Initialize userId from local storage
+    username: localStorage.getItem('username'), // Initialize username from local storage
+    isAuthenticated: localStorage.getItem('isAuthenticated'),
     isLoading: false,
     error: null,
   },
@@ -46,10 +52,14 @@ const authSlice = createSlice({
     logout: (state) => {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user_id'); // Remove user ID from local storage
+      localStorage.removeItem('username'); // Remove username from local storage
       state.user = null;
       state.accessToken = null;
       state.refreshToken = null;
-      state.isAuthenticated = false;
+      state.userId = null; // Clear user ID
+      state.username = null; // Clear username
+      state.isAuthenticated = false  ;
       state.error = null; // Clear error on logout
     },
   },
@@ -63,6 +73,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.accessToken = action.payload.access;
         state.refreshToken = action.payload.refresh;
+        state.userId = action.payload.id; // Save user ID in state
+        state.username = action.payload.username; // Save username in state
         state.isAuthenticated = true;
         state.error = null; // Clear error on successful login
       })

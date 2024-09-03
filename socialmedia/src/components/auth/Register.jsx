@@ -122,6 +122,17 @@ const Register = () => {
         >
           Register
         </Button>
+        
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          fullWidth 
+          onClick={() => navigate('/login')} 
+          sx={{ mt: 2 }}
+        >
+          Already have an account? Login
+        </Button>
+
         {error && <Typography color="error" variant="body2">{error}</Typography>}
       </form>
     </Box>

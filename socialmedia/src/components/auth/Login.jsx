@@ -14,6 +14,14 @@ const Login = () => {
   const navigate = useNavigate();
   const { isLoading, isAuthenticated, error } = useSelector((state) => state.auth);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Replace the current entry in history stack to avoid going back
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]); // Run effect when isAuthenticated changes
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -25,18 +33,10 @@ const Login = () => {
     e.preventDefault();
     try {
       await dispatch(loginUser(formData)).unwrap(); // Unwrap the promise
-      // No need to check isAuthenticated here
     } catch (err) {
       console.error("Login error:", err);
     }
   };
-
-  // useEffect to navigate on successful login
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]); // Run effect when isAuthenticated changes
 
   return (
     <Box sx={{ maxWidth: 400, mx: 'auto', mt: 5 }}>
@@ -75,7 +75,7 @@ const Login = () => {
           disabled={isLoading}
           sx={{ mt: 2 }}
         >
-          Login
+          {isLoading ? 'Logging in...' : 'Login'}
         </Button>
         
         {error && (
