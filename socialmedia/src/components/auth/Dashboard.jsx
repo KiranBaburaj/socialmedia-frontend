@@ -4,6 +4,7 @@ import { logout } from '../../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { Button, Typography, Box } from '@mui/material';
 import Navbar from '../Navbar';
+import UserList from '../UserList';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ const Dashboard = () => {
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', mt: 5, textAlign: 'center' }}>
       <Navbar />
+      <UserList/>
       <Typography variant="h4" component="h2" gutterBottom>
         Dashboard
       </Typography>

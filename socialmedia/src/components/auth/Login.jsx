@@ -20,7 +20,7 @@ const Login = () => {
       // Replace the current entry in history stack to avoid going back
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]); // Run effect when isAuthenticated changes
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -84,6 +84,16 @@ const Login = () => {
           </Typography>
         )}
       </form>
+      
+      <Button 
+        variant="outlined" 
+        color="primary" 
+        fullWidth 
+        onClick={() => navigate('/register')} 
+        sx={{ mt: 2 }}
+      >
+        Don't have an account? Register
+      </Button>
     </Box>
   );
 };

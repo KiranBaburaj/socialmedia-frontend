@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { registerUser } from '../../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,15 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isLoading, isAuthenticated, error } = useSelector((state) => state.auth);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Replace the current entry in history stack to avoid going back
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const validate = () => {
     const errors = {};
