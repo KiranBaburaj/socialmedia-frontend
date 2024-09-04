@@ -11,7 +11,6 @@ const UserList = () => {
   const loggedInUserId = useSelector((state) => state.auth.userId);
   const socketRef = useRef(null);
   
-  // State to manage incoming call
   const [incomingCall, setIncomingCall] = useState(null);
 
   useEffect(() => {
@@ -21,7 +20,6 @@ const UserList = () => {
   }, [status, dispatch]);
 
   useEffect(() => {
-    // Set up WebSocket connection for notifications
     socketRef.current = new WebSocket(`ws://localhost:8000/ws/notifications/${loggedInUserId}/`);
 
     socketRef.current.onopen = () => {
@@ -68,39 +66,35 @@ const UserList = () => {
   const handleVideoCall = (userId) => {
     console.log("Initiating video call to:", userId);
     
-    // Generate a unique room ID based on user IDs
     const roomId = `${Math.min(loggedInUserId, userId)}-${Math.max(loggedInUserId, userId)}`;
   
-    // Log the IDs being used
     console.log("Logged-in User ID:", loggedInUserId);
     console.log("Calling User ID:", userId);
     console.log("Generated Room ID:", roomId);
   
-    // Send the incoming call notification with the room ID
-    try {
-      socketRef.current.send(JSON.stringify({
-        type: 'incoming-call',
-        data: {
-          from: loggedInUserId,
-          to: userId,
-          roomId: roomId,
-        },
-      }));
-      console.log("Video call notification sent.");
+    socketRef.current.send(JSON.stringify({
+      type: 'incoming-call',
+      data: {
+        from: loggedInUserId,
+        to: userId,
+        roomId: roomId,
+      },
+    }));
+    console.log("Video call notification sent.");
 
-      // Navigate to the video call with the room ID only if initiating the call
-      navigate(`/video-call/${roomId}`);
-    } catch (error) {
-      console.error("Error sending WebSocket message:", error);
-    }
+    // Wait a short time to ensure the message is sent before navigating
+    setTimeout(() => {
+      navigate(`/video-call/${roomId}`, { state: { isCaller: true } });
+    }, 100);
   };
 
   const handleReceiveCall = () => {
     if (incomingCall) {
-      // Navigate to the video call room with the incoming call details
-      navigate(`/video-call/${incomingCall.roomId}`);
-      // Reset incoming call state
-      setIncomingCall(null);
+      // Wait a short time to ensure any pending messages are processed
+      setTimeout(() => {
+        navigate(`/video-call/${incomingCall.roomId}`, { state: { isCaller: false } });
+        setIncomingCall(null);
+      }, 100);
     }
   };
 
@@ -121,7 +115,6 @@ const UserList = () => {
         )}
       </ul>
 
-      {/* Incoming Call Notification */}
       {incomingCall && (
         <div>
           <h3>Incoming Call from User ID: {incomingCall.from}</h3>
