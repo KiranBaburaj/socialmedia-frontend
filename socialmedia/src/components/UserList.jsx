@@ -1,11 +1,15 @@
+// src/components/UserList.jsx
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUsers, selectMemoizedUsers } from '../features/user/userSlice';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const UserList = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // Initialize useNavigate
   const { status, error, isLoading } = useSelector((state) => state.user);
-  const users = useSelector(selectMemoizedUsers) || []; // Fallback to an empty array
+  const users = useSelector(selectMemoizedUsers) || [];
+  const loggedInUserId = useSelector((state) => state.auth.userId);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -13,26 +17,26 @@ const UserList = () => {
     }
   }, [status, dispatch]);
 
-  if (status === 'loading' || isLoading) {
-    return <div>Loading...</div>;
-  }
+  const filteredUsers = users.filter(user => user.id !== loggedInUserId);
 
-  if (status === 'failed') {
-    // Check if error is an object and extract message
-    const errorMessage = typeof error === 'object' && error.detail ? error.detail : error;
-    return <div>Error: {errorMessage}</div>; // Render the error message safely
-  }
+  const handleChat = (user) => {
+    // Navigate to the chat room
+    navigate(`/chat/${user.id}`); // Using roomId as user.id for the chat room
+  };
 
   return (
     <div>
       <h2>Users</h2>
       <ul>
-        {Array.isArray(users) && users.length > 0 ? (
-          users.map((user) => (
-            <li key={user.id}>{user.username} ({user.email})</li>
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((user) => (
+            <li key={user.id}>
+              {user.username} ({user.email})
+              <button onClick={() => handleChat(user)}>Chat</button>
+            </li>
           ))
         ) : (
-          <li>No users found</li>
+          <li>No other users found</li>
         )}
       </ul>
     </div>

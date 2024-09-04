@@ -15,9 +15,7 @@ export const connectWebSocket = (roomId, onMessageReceived, token) => {
     return socket;
   }
 
-
-  socket = new WebSocket(`wss://http://localhost:8000/ws/chat/${roomId}/?token=${token}`);
-
+  socket = new WebSocket(`ws://localhost:8000/ws/chat/${roomId}/?token=${token}`);
 
   socket.onopen = () => {
     console.log('WebSocket connection established.');
@@ -31,12 +29,10 @@ export const connectWebSocket = (roomId, onMessageReceived, token) => {
       if (data.error) {
         console.error('WebSocket error:', data.error);
       } else if (data.message) {
-        const messageContent = data.message.content || Object.values(data.message).join('');
         const messageWithDetails = {
-          ...data.message,
-          content: messageContent,
-          timestamp: data.message.timestamp || new Date().toISOString(),
-          sender: data.message.sender || { id: data.user_id, name:  data.full_name }
+          content: data.message,
+          timestamp: data.timestamp || new Date().toISOString(),
+          sender: data.user
         };
         console.log("Processed message:", messageWithDetails);
         onMessageReceived(messageWithDetails);
@@ -65,15 +61,28 @@ export const connectWebSocket = (roomId, onMessageReceived, token) => {
   return socket;
 };
 
-export const sendWebSocketMessage = (messagePayload) => {
+/**
+ * Sends a message through the WebSocket.
+ * @param {string} content - The message content to be sent.
+ * @param {number} userId - The ID of the user sending the message.
+ */
+export const sendWebSocketMessage = (content, userId) => {
+  const payload = {
+    message: content,   // The actual message content
+    user_id: userId     // The ID of the user
+  };
+
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(messagePayload));
-    console.log("Message sent:", messagePayload);
+    socket.send(JSON.stringify(payload));
+    console.log("Message sent:", payload);
   } else {
     console.warn('WebSocket is not open. Message not sent.');
   }
 };
 
+/**
+ * Closes the WebSocket connection.
+ */
 export const closeWebSocket = () => {
   if (socket) {
     socket.close();

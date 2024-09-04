@@ -1,18 +1,25 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
 import Dashboard from './components/auth/Dashboard';
+import UserList from './components/UserList';
+import ChatRoom from './components/ChatRoom'; // Import ChatRoom component
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </Router>
+
+      <Router>
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<UserList />} />
+          <Route path="/chat/:roomId" element={<ChatRoom />} /> {/* Dynamic chat room */}
+        </Routes>
+      </Router>
+
   );
 }
 
