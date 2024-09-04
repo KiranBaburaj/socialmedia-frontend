@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import { createSelector } from '@reduxjs/toolkit'; // Import createSelector
 
 // Define the base API URL
 const API_URL = 'http://localhost:8000/api';
@@ -10,24 +11,25 @@ const initialState = {
   error: null,
   isLoading: false,
 };
+
 export const fetchUsers = createAsyncThunk(
-    'user/fetchUsers',
-    async (_, { rejectWithValue, getState }) => {
-      const state = getState();
-      const accessToken = state.auth.accessToken; // Get the access token from auth slice
-  
-      try {
-        const response = await axios.get(`${API_URL}/users/`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`, // Include the access token in the headers
-          },
-        });
-        return response.data;
-      } catch (error) {
-        return rejectWithValue(error.response.data);
-      }
+  'user/fetchUsers',
+  async (_, { rejectWithValue, getState }) => {
+    const state = getState();
+    const accessToken = state.auth.accessToken; // Get the access token from auth slice
+
+    try {
+      const response = await axios.get(`${API_URL}/users/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`, // Include the access token in the headers
+        },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data);
     }
-  );
+  }
+);
 
 const userSlice = createSlice({
   name: 'user',
@@ -53,7 +55,10 @@ const userSlice = createSlice({
   },
 });
 
-// Selector to get users
-export const selectMemoizedUsers = (state) => state.user.users;
+// Memoized selector to get users
+export const selectUsers = createSelector(
+  (state) => state.user.users, // Input selector
+  (users) => users // Output selector
+);
 
 export default userSlice.reducer;
