@@ -15,29 +15,63 @@ const VideoCall = () => {
   const [offerCreated, setOfferCreated] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [pendingICECandidates, setPendingICECandidates] = useState([]);
 
   useEffect(() => {
     console.log(`VideoCall component mounted. isCaller: ${isCaller}, roomId: ${roomId}`);
     
+    const configuration = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        // Add TURN servers here if available
+      ]
+    };
+
     const setupPeerConnection = () => {
-      peerConnectionRef.current = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
+      peerConnectionRef.current = new RTCPeerConnection(configuration);
 
       peerConnectionRef.current.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("ICE candidate generated:", event.candidate);
+          console.log("Sending ICE candidate:", event.candidate);
           sendMessage('ice-candidate', event.candidate);
         }
       };
 
       peerConnectionRef.current.ontrack = (event) => {
         console.log("Remote track received:", event.streams[0]);
-        remoteVideoRef.current.srcObject = event.streams[0];
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("Remote video source set");
+        } else {
+          console.error("Unable to set remote video source");
+        }
       };
 
       peerConnectionRef.current.oniceconnectionstatechange = () => {
         console.log("ICE connection state:", peerConnectionRef.current.iceConnectionState);
+        if (peerConnectionRef.current.iceConnectionState === 'disconnected' ||
+            peerConnectionRef.current.iceConnectionState === 'failed') {
+          console.log("Attempting to reconnect...");
+          createOffer(); // For the caller
+          // For the callee, you might need to implement a way to request a new offer
+        }
+      };
+
+      peerConnectionRef.current.onnegotiationneeded = async () => {
+        console.log("Negotiation needed");
+        if (isCaller) {
+          try {
+            await createOffer();
+          } catch (error) {
+            console.error("Error during renegotiation:", error);
+          }
+        }
+      };
+
+      peerConnectionRef.current.onsignalingstatechange = () => {
+        console.log("Signaling state changed:", peerConnectionRef.current.signalingState);
       };
     };
 
@@ -90,7 +124,7 @@ const VideoCall = () => {
 
   const sendMessage = (type, data) => {
     const message = JSON.stringify({ type, data });
-    console.log(`Sending ${type} message:`, message);
+    console.log(`Sending message of type: ${type}`);
     socketRef.current.send(message);
   };
 
@@ -102,6 +136,7 @@ const VideoCall = () => {
 
   const handleMessage = async (message) => {
     const { type, data } = message;
+    console.log(`Received message of type: ${type}`);
     try {
       switch (type) {
         case 'ready':
@@ -131,7 +166,7 @@ const VideoCall = () => {
 
   useEffect(() => {
     console.log(`isReady: ${isReady}, peerReady: ${peerReady}, isCaller: ${isCaller}, offerCreated: ${offerCreated}`);
-    if (isReady && peerReady && isCaller && !offerCreated) {
+    if (isReady && peerReady && isCaller && !offerCreated && peerConnectionRef.current) {
       console.log("Both peers are ready. Caller is creating offer.");
       createOffer();
     }
@@ -162,6 +197,7 @@ const VideoCall = () => {
       }
       console.log("Setting remote description with offer:", offer);
       await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      await processPendingCandidates();
       console.log("Creating answer...");
       const answer = await peerConnectionRef.current.createAnswer();
       await peerConnectionRef.current.setLocalDescription(answer);
@@ -180,6 +216,7 @@ const VideoCall = () => {
       }
       console.log("Setting remote description with answer:", answer);
       await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      await processPendingCandidates();
     } catch (error) {
       console.error("Error handling answer:", error);
       setErrorMessage(`Error handling answer: ${error.message}`);
@@ -188,12 +225,31 @@ const VideoCall = () => {
 
   const handleIceCandidate = async (candidate) => {
     try {
-      console.log("Adding ICE candidate:", candidate);
-      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      console.log("Received ICE candidate:", candidate);
+      if (peerConnectionRef.current.remoteDescription && peerConnectionRef.current.remoteDescription.type) {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("ICE candidate added successfully");
+      } else {
+        console.log("Queuing ICE candidate");
+        setPendingICECandidates(prev => [...prev, candidate]);
+      }
     } catch (error) {
-      console.error("Error adding ICE candidate:", error);
-      setErrorMessage(`Error adding ICE candidate: ${error.message}`);
+      console.error("Error handling ICE candidate:", error);
+      setErrorMessage(`Error handling ICE candidate: ${error.message}`);
     }
+  };
+
+  const processPendingCandidates = async () => {
+    console.log(`Processing ${pendingICECandidates.length} pending candidates`);
+    for (const candidate of pendingICECandidates) {
+      try {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("Pending ICE candidate added successfully");
+      } catch (error) {
+        console.error("Error adding pending ICE candidate:", error);
+      }
+    }
+    setPendingICECandidates([]);
   };
 
   const toggleMute = () => {
