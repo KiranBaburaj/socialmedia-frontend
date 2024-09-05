@@ -13,6 +13,8 @@ const VideoCall = () => {
   const [isReady, setIsReady] = useState(false);
   const [peerReady, setPeerReady] = useState(false);
   const [offerCreated, setOfferCreated] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
 
   useEffect(() => {
     console.log(`VideoCall component mounted. isCaller: ${isCaller}, roomId: ${roomId}`);
@@ -194,20 +196,108 @@ const VideoCall = () => {
     }
   };
 
+  const toggleMute = () => {
+    const stream = localVideoRef.current.srcObject;
+    stream.getAudioTracks().forEach(track => track.enabled = !track.enabled);
+    setIsMuted(!isMuted);
+    console.log(`Microphone is now ${!isMuted ? 'muted' : 'unmuted'}.`);
+  };
+
+  const toggleVideo = () => {
+    const stream = localVideoRef.current.srcObject;
+    stream.getVideoTracks().forEach(track => track.enabled = !track.enabled);
+    setIsVideoEnabled(!isVideoEnabled);
+    console.log(`Video is now ${!isVideoEnabled ? 'off' : 'on'}.`);
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h2>Video Call Room: {roomId}</h2>
-      <p>Is Caller: {isCaller ? 'Yes' : 'No'}</p>
-      <p>Local Ready: {isReady ? 'Yes' : 'No'}</p>
-      <p>Peer Ready: {peerReady ? 'Yes' : 'No'}</p>
-      <p>Offer Created: {offerCreated ? 'Yes' : 'No'}</p>
-      {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
-      <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: '40%', margin: '10px' }} />
-        <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '40%', margin: '10px' }} />
+    <div style={styles.container}>
+      <h2 style={styles.header}>Video Call Room: {roomId}</h2>
+      <div style={styles.videoContainer}>
+        <video ref={localVideoRef} autoPlay playsInline muted style={styles.localVideo} />
+        <video ref={remoteVideoRef} autoPlay playsInline style={styles.remoteVideo} />
+      </div>
+      <div style={styles.info}>
+        <p>Is Caller: {isCaller ? 'Yes' : 'No'}</p>
+        <p>Local Ready: {isReady ? 'Yes' : 'No'}</p>
+        <p>Peer Ready: {peerReady ? 'Yes' : 'No'}</p>
+        {errorMessage && <p style={styles.error}>{errorMessage}</p>}
+      </div>
+      <div style={styles.buttonContainer}>
+        <button style={styles.button} onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
+        <button style={styles.button} onClick={toggleVideo}>{isVideoEnabled ? 'Turn Off Video' : 'Turn On Video'}</button>
+        <button style={styles.hangUpButton} onClick={() => { /* Handle hang up */ }}>Hang Up</button>
       </div>
     </div>
   );
+};
+
+const styles = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    padding: '20px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+    maxWidth: '800px',
+    margin: '0 auto',
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '20px',
+  },
+  videoContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  localVideo: {
+    width: '30%',
+    margin: '10px',
+    borderRadius: '8px',
+    border: '2px solid #ccc',
+  },
+  remoteVideo: {
+    width: '60%',
+    margin: '10px',
+    borderRadius: '8px',
+    border: '2px solid #4CAF50',
+  },
+  info: {
+    textAlign: 'center',
+    margin: '10px 0',
+  },
+  error: {
+    color: 'red',
+  },
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: '10px',
+  },
+  button: {
+    padding: '10px 20px',
+    margin: '5px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+  },
+  hangUpButton: {
+    padding: '10px 20px',
+    margin: '5px',
+    backgroundColor: '#F44336',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s',
+  },
 };
 
 export default VideoCall;
