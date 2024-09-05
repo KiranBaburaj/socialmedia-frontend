@@ -15,70 +15,26 @@ const VideoCall = () => {
   const [offerCreated, setOfferCreated] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [, forceUpdate] = useState();
 
   useEffect(() => {
     console.log(`VideoCall component mounted. isCaller: ${isCaller}, roomId: ${roomId}`);
-    
-    const setupPeerConnection = () => {
-      peerConnectionRef.current = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
+    let isMounted = true;
 
-      peerConnectionRef.current.onicecandidate = (event) => {
-        if (event.candidate) {
-          console.log("ICE candidate generated:", event.candidate);
-          sendMessage('ice-candidate', event.candidate);
-        }
-      };
-
-      peerConnectionRef.current.ontrack = (event) => {
-        console.log("Remote track received:", event.streams[0]);
-        remoteVideoRef.current.srcObject = event.streams[0];
-      };
-
-      peerConnectionRef.current.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", peerConnectionRef.current.iceConnectionState);
-      };
+    const setup = async () => {
+      await setupPeerConnection();
+      await setupWebSocket();
+      await setupMediaStream();
+      if (isMounted) setIsSetupComplete(true);
     };
 
-    setupPeerConnection();
-
-    socketRef.current = new WebSocket(`ws://localhost:8000/ws/video_call/${roomId}/`);
-
-    socketRef.current.onopen = () => {
-      console.log("WebSocket connection established for video call.");
-      sendReadyMessage();
-    };
-
-    socketRef.current.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
-      console.log("Message received at VideoCall:", message);
-      handleMessage(message);
-    };
-
-    socketRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setErrorMessage(`WebSocket error: ${error.message}`);
-    };
-
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then(stream => {
-        console.log("Local media stream obtained:", stream);
-        localVideoRef.current.srcObject = stream;
-        stream.getTracks().forEach(track => {
-          console.log("Adding track to peer connection:", track);
-          peerConnectionRef.current.addTrack(track, stream);
-        });
-        setIsReady(true);
-      })
-      .catch(error => {
-        console.error("Error accessing media devices:", error);
-        setErrorMessage(`Error accessing media devices: ${error.message}`);
-      });
+    setup();
 
     return () => {
+      isMounted = false;
       console.log("Closing WebSocket connection and stopping tracks.");
-      socketRef.current.close();
+      if (socketRef.current) socketRef.current.close();
       if (localVideoRef.current && localVideoRef.current.srcObject) {
         localVideoRef.current.srcObject.getTracks().forEach(track => track.stop());
       }
@@ -88,21 +44,90 @@ const VideoCall = () => {
     };
   }, [roomId, isCaller]);
 
+  const setupPeerConnection = () => {
+    peerConnectionRef.current = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    peerConnectionRef.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log("ICE candidate generated:", event.candidate);
+        sendMessage('ice-candidate', event.candidate);
+      }
+    };
+
+    peerConnectionRef.current.ontrack = (event) => {
+      console.log("Remote track received:", event.streams[0]);
+      remoteVideoRef.current.srcObject = event.streams[0];
+    };
+
+    peerConnectionRef.current.oniceconnectionstatechange = () => {
+      console.log("ICE connection state:", peerConnectionRef.current.iceConnectionState);
+    };
+  };
+
+  const setupWebSocket = () => {
+    return new Promise((resolve, reject) => {
+      socketRef.current = new WebSocket(`ws://localhost:8000/ws/video_call/${roomId}/`);
+
+      socketRef.current.onopen = () => {
+        console.log("WebSocket connection established for video call.");
+        sendReadyMessage();
+        resolve();
+      };
+
+      socketRef.current.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+        console.log("Message received at VideoCall:", message);
+        handleMessage(message);
+      };
+
+      socketRef.current.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setErrorMessage(`WebSocket error: ${error.message}`);
+        reject(error);
+      };
+    });
+  };
+
+  const setupMediaStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log("Local media stream obtained:", stream);
+      localVideoRef.current.srcObject = stream;
+      stream.getTracks().forEach(track => {
+        console.log("Adding track to peer connection:", track);
+        peerConnectionRef.current.addTrack(track, stream);
+      });
+      setIsReady(true);
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
+      setErrorMessage(`Error accessing media devices: ${error.message}`);
+      throw error;
+    }
+  };
+
   const sendMessage = (type, data) => {
-    const message = JSON.stringify({ type, data });
-    console.log(`Sending ${type} message:`, message);
-    socketRef.current.send(message);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      const message = JSON.stringify({ type, data });
+      console.log(`Sending ${type} message:`, message);
+      socketRef.current.send(message);
+    } else {
+      console.warn(`WebSocket not open. Unable to send ${type} message.`);
+    }
   };
 
   const sendReadyMessage = () => {
     sendMessage('ready', { isCaller });
     setIsReady(true);
+    forceUpdate({});
     console.log("Local peer is ready");
   };
 
   const handleMessage = async (message) => {
     const { type, data } = message;
     try {
+      console.log(`Handling message of type: ${type}`);
       switch (type) {
         case 'ready':
           console.log("Peer is ready:", data);
@@ -126,16 +151,18 @@ const VideoCall = () => {
     } catch (error) {
       console.error(`Error handling ${type}:`, error);
       setErrorMessage(`Error handling ${type}: ${error.message}`);
+    } finally {
+      console.log(`Finished handling message of type: ${type}`);
     }
   };
 
   useEffect(() => {
-    console.log(`isReady: ${isReady}, peerReady: ${peerReady}, isCaller: ${isCaller}, offerCreated: ${offerCreated}`);
-    if (isReady && peerReady && isCaller && !offerCreated) {
+    console.log(`isSetupComplete: ${isSetupComplete}, isReady: ${isReady}, peerReady: ${peerReady}, isCaller: ${isCaller}, offerCreated: ${offerCreated}`);
+    if (isSetupComplete && isReady && peerReady && isCaller && !offerCreated) {
       console.log("Both peers are ready. Caller is creating offer.");
       createOffer();
     }
-  }, [isReady, peerReady, isCaller, offerCreated]);
+  }, [isSetupComplete, isReady, peerReady, isCaller, offerCreated]);
 
   const createOffer = async () => {
     if (offerCreated) {
@@ -161,7 +188,9 @@ const VideoCall = () => {
         return;
       }
       console.log("Setting remote description with offer:", offer);
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      await retryOperation(async () => {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      });
       console.log("Creating answer...");
       const answer = await peerConnectionRef.current.createAnswer();
       await peerConnectionRef.current.setLocalDescription(answer);
@@ -179,7 +208,9 @@ const VideoCall = () => {
         return;
       }
       console.log("Setting remote description with answer:", answer);
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      await retryOperation(async () => {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      });
     } catch (error) {
       console.error("Error handling answer:", error);
       setErrorMessage(`Error handling answer: ${error.message}`);
@@ -189,10 +220,24 @@ const VideoCall = () => {
   const handleIceCandidate = async (candidate) => {
     try {
       console.log("Adding ICE candidate:", candidate);
-      await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      await retryOperation(async () => {
+        await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+      });
     } catch (error) {
       console.error("Error adding ICE candidate:", error);
       setErrorMessage(`Error adding ICE candidate: ${error.message}`);
+    }
+  };
+
+  const retryOperation = async (operation, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        await operation();
+        return;
+      } catch (error) {
+        console.error(`Operation failed, attempt ${i + 1} of ${maxRetries}:`, error);
+        if (i === maxRetries - 1) throw error;
+      }
     }
   };
 
@@ -221,6 +266,7 @@ const VideoCall = () => {
         <p>Is Caller: {isCaller ? 'Yes' : 'No'}</p>
         <p>Local Ready: {isReady ? 'Yes' : 'No'}</p>
         <p>Peer Ready: {peerReady ? 'Yes' : 'No'}</p>
+        <p>Setup Complete: {isSetupComplete ? 'Yes' : 'No'}</p>
         {errorMessage && <p style={styles.error}>{errorMessage}</p>}
       </div>
       <div style={styles.buttonContainer}>
