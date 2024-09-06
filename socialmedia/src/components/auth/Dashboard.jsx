@@ -32,7 +32,7 @@ const Dashboard = () => {
   };
 
   return (
-    <Box sx={{ mx: 'auto', mt: 5, padding: 3 }}>
+    <Box sx={{ padding: 2  }}>
       <Navbar />
 
       <Paper elevation={3} sx={{ padding: 3 }}>
