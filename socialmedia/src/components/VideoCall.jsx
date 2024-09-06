@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { Box, Typography, Button, Paper, Grid, CircularProgress } from '@mui/material';
 
 const VideoCall = () => {
   const { roomId } = useParams();
@@ -8,15 +9,27 @@ const VideoCall = () => {
   const navigate = useNavigate();
   const isCaller = location.state?.isCaller || false;
   const loggedInUserId = useSelector((state) => state.auth.userId);
+  const loggedInUsername = useSelector((state) => state.auth.username);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); // Check if the user is authenticated
 
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [peerConnection, setPeerConnection] = useState(null);
   const [isReady, setIsReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [remoteUserDetails, setRemoteUserDetails] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const socketRef = useRef(null);
+  
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true }); // Redirect to login if not authenticated
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const initializeCall = async () => {
@@ -48,7 +61,7 @@ const VideoCall = () => {
           console.log('WebSocket connection established');
           socketRef.current.send(JSON.stringify({
             type: 'ready',
-            data: { userId: loggedInUserId }
+            data: { userId: loggedInUserId, username: loggedInUsername }
           }));
         };
 
@@ -59,6 +72,9 @@ const VideoCall = () => {
           switch (message.type) {
             case 'ready':
               setIsReady(true);
+              if (message.data.userId !== loggedInUserId) {
+                setRemoteUserDetails(message.data);
+              }
               if (isCaller) {
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
@@ -108,72 +124,127 @@ const VideoCall = () => {
     initializeCall();
 
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      if (peerConnection) {
-        peerConnection.close();
-      }
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
+      handleEndCall(); // Clean up when component unmounts
     };
-  }, [roomId, isCaller, loggedInUserId]);
+  }, [roomId, isCaller, loggedInUserId, loggedInUsername]);
 
   const handleEndCall = () => {
+    // Stop local media tracks
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
+      setLocalStream(null); // Clear local stream
     }
+    // Close peer connection
     if (peerConnection) {
       peerConnection.close();
+      setPeerConnection(null); // Clear peer connection
     }
+    // Close WebSocket connection
     if (socketRef.current) {
       socketRef.current.close();
+      socketRef.current = null; // Clear socket reference
     }
-    navigate('/');
+    navigate('/connectroom'); // Redirect to connect room
+  };
+
+  const toggleMute = () => {
+    if (localStream) {
+      const audioTracks = localStream.getAudioTracks();
+      audioTracks.forEach(track => track.enabled = !track.enabled);
+      setIsMuted(prev => !prev);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTracks = localStream.getVideoTracks();
+      videoTracks.forEach(track => track.enabled = !track.enabled);
+      setIsVideoOff(prev => !prev);
+    }
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>Video Call - Room {roomId}</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div>
-          <h3 style={{ marginBottom: '0.5rem' }}>Local Video</h3>
-          <video 
-            ref={localVideoRef} 
-            autoPlay 
-            muted 
-            playsInline 
-            style={{ width: '100%', height: 'auto', border: '1px solid #ccc', borderRadius: '4px' }}
-          />
-        </div>
-        <div>
-          <h3 style={{ marginBottom: '0.5rem' }}>Remote Video</h3>
-          <video 
-            ref={remoteVideoRef} 
-            autoPlay 
-            playsInline 
-            style={{ width: '100%', height: 'auto', border: '1px solid #ccc', borderRadius: '4px' }}
-          />
-        </div>
-      </div>
-      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-        <button 
+    <Box sx={{ maxWidth: '600px', margin: '2rem auto', padding: '1rem' }}>
+      <Typography variant="h4" align="center" gutterBottom>
+        Video Call - Room {roomId}
+      </Typography>
+
+      {isReady && remoteUserDetails && (
+        <Typography variant="body1" align="center" gutterBottom>
+          Talking to: {remoteUserDetails.username}
+        </Typography>
+      )}
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              My Video
+            </Typography>
+            <video 
+              ref={localVideoRef} 
+              autoPlay 
+              muted 
+              playsInline 
+              style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+            />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ padding: 2 }}>
+            {isReady && remoteUserDetails ? (
+              <Typography variant="h6" gutterBottom>
+                {remoteUserDetails.username}
+              </Typography>
+            ) : (
+              <Typography variant="h6" gutterBottom>
+                Remote Video
+              </Typography>
+            )}
+            <video 
+              ref={remoteVideoRef} 
+              autoPlay 
+              playsInline 
+              style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
+            />
+          </Paper>
+        </Grid>
+      </Grid>
+      <Box sx={{ textAlign: 'center', marginTop: 2 }}>
+        <Button 
+          variant="contained" 
+          color={isMuted ? 'success' : 'error'} 
+          onClick={toggleMute}
+          sx={{ margin: '0 0.5rem' }}
+        >
+          {isMuted ? 'Unmute' : 'Mute'}
+        </Button>
+        <Button 
+          variant="contained" 
+          color={isVideoOff ? 'success' : 'error'} 
+          onClick={toggleVideo}
+          sx={{ margin: '0 0.5rem' }}
+        >
+          {isVideoOff ? 'Turn Video On' : 'Turn Video Off'}
+        </Button>
+        <Button 
+          variant="contained" 
+          color="error" 
           onClick={handleEndCall}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
+          sx={{ margin: '0 0.5rem' }}
         >
           End Call
-        </button>
-      </div>
-      {!isReady && <p style={{ textAlign: 'center', marginTop: '1rem' }}>Waiting for both parties to be ready...</p>}
-    </div>
+        </Button>
+      </Box>
+      {!isReady && (
+        <Box sx={{ textAlign: 'center', marginTop: 2 }}>
+          <CircularProgress />
+          <Typography variant="body1" sx={{ marginTop: 1 }}>
+            Waiting for both parties to be ready...
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 };
 

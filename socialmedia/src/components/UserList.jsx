@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchUsers, selectUsers } from '../features/user/userSlice';
 import { useNavigate } from 'react-router-dom';
+import Navbar from './Navbar';
+import { Typography, Button, TextField, Box, Paper } from '@mui/material';
 
 const UserList = () => {
   const dispatch = useDispatch();
@@ -9,10 +11,18 @@ const UserList = () => {
   const { status } = useSelector((state) => state.user);
   const users = useSelector(selectUsers) || [];
   const loggedInUserId = useSelector((state) => state.auth.userId);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated); // Check if the user is authenticated
   const socketRef = useRef(null);
   
   const [incomingCall, setIncomingCall] = useState(null);
   const [roomId, setRoomId] = useState('');
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true }); // Redirect to login if not authenticated
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -34,7 +44,7 @@ const UserList = () => {
     
       if (type === 'incoming-call') {
         console.log("Incoming call notification received:", data);
-        if (data.to == loggedInUserId) {
+        if (data.to === loggedInUserId) {
           setIncomingCall(data);
         }
       } else {
@@ -66,8 +76,6 @@ const UserList = () => {
       alert("Please enter a room ID.");
       return;
     }
-
-    // Navigate to video call with the created room ID
     navigate(`/video-call/${roomId}`, { state: { isCaller: true } });
   };
 
@@ -76,8 +84,6 @@ const UserList = () => {
       alert("Please enter a room ID.");
       return;
     }
-
-    // Navigate to video call with the joined room ID
     navigate(`/video-call/${roomId}`, { state: { isCaller: false } });
   };
 
@@ -91,38 +97,43 @@ const UserList = () => {
   };
 
   return (
-    <div>
-      <h2>Users</h2>
-      <ul>
-        {filteredUsers.length > 0 ? (
-          filteredUsers.map((user) => (
-            <li key={user.id}>
-              {user.username} ({user.email})
-              <button onClick={() => handleChat(user.id)}>Chat</button>
-            </li>
-          ))
-        ) : (
-          <li>No other users found</li>
-        )}
-      </ul>
+    <Box sx={{ padding: 2 }}>
+      <Navbar />
+      <Typography variant="h4" gutterBottom>
+        User List
+      </Typography>
 
-      <h3>Create or Join Room</h3>
-      <input 
-        type="text" 
-        placeholder="Enter Room ID" 
-        value={roomId} 
-        onChange={(e) => setRoomId(e.target.value)} 
-      />
-      <button onClick={handleCreateRoom}>Create Room</button>
-      <button onClick={handleJoinRoom}>Join Room</button>
+      <Paper elevation={3} sx={{ padding: 2, marginTop: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Create or Join Room
+        </Typography>
+        <TextField 
+          label="Enter Room ID" 
+          variant="outlined" 
+          fullWidth 
+          value={roomId} 
+          onChange={(e) => setRoomId(e.target.value)} 
+          sx={{ marginBottom: 2, maxWidth: 300 }} // Adjust size here
+        />
+        <Button variant="contained" color="primary" onClick={handleCreateRoom} sx={{ marginRight: 1 }}>
+          Create Room
+        </Button>
+        <Button variant="contained" color="secondary" onClick={handleJoinRoom}>
+          Join Room
+        </Button>
+      </Paper>
 
       {incomingCall && (
-        <div>
-          <h3>Incoming Call from User ID: {incomingCall.from}</h3>
-          <button onClick={handleReceiveCall}>Enter Room</button>
-        </div>
+        <Paper elevation={3} sx={{ padding: 2, marginTop: 2 }}>
+          <Typography variant="h6">
+            Incoming Call from User ID: {incomingCall.from}
+          </Typography>
+          <Button variant="contained" color="success" onClick={handleReceiveCall}>
+            Enter Room
+          </Button>
+        </Paper>
       )}
-    </div>
+    </Box>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchChatMessages, selectMessages, selectIsLoading, selectError } from '../features/chat/chatSlice';
 import { Box, Button, Paper, TextField, Typography, Divider } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
@@ -22,6 +22,7 @@ const theme = createTheme({
 
 const ChatRoom = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { roomId } = useParams();
   const messages = useSelector(selectMessages);
   const isLoading = useSelector(selectIsLoading);
@@ -30,21 +31,29 @@ const ChatRoom = () => {
   const messagesEndRef = useRef(null);
   const userId = useSelector(state => state.auth.userId);
   const fullName = useSelector(state => state.auth.full_name);
-  const token = useSelector(state => state.auth.accessToken); // Assuming you store the JWT token in auth state
+  const token = useSelector(state => state.auth.accessToken);
+  const isAuthenticated = useSelector(state => state.auth.isAuthenticated); // Check if the user is authenticated
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true }); // Redirect to login if not authenticated
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (roomId) {
-      dispatch(fetchChatMessages(roomId)); // Fetch messages when roomId changes
+      dispatch(fetchChatMessages(roomId));
     }
 
     // Connect to WebSocket
     const websocket = connectWebSocket(roomId, (message) => {
       console.log("Incoming WebSocket message:", message);
-      // You may want to dispatch an action to update the Redux state with the new message here
+      // Dispatch an action to update the Redux state with the new message here if needed
     }, token);
 
     return () => {
-      closeWebSocket(); // Close WebSocket connection on unmount
+      closeWebSocket();
     };
   }, [dispatch, roomId, token]);
 
@@ -55,9 +64,8 @@ const ChatRoom = () => {
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim()) {
-      // Send message via WebSocket with the correct payload structure
-      sendWebSocketMessage(newMessage, userId); // Directly use newMessage and userId
-      setNewMessage(''); // Clear input
+      sendWebSocketMessage(newMessage, userId);
+      setNewMessage('');
     }
   };
 

@@ -16,7 +16,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/users" element={<UserList />} />
+          <Route path="/connectroom" element={<UserList />} />
           <Route path="/video-call/:roomId" element={<VideoCall />} />
           <Route path="/chat/:roomId" element={<ChatRoom />} /> {/* Dynamic chat room */}
         </Routes>
