@@ -12,6 +12,7 @@ const UserList = () => {
   const socketRef = useRef(null);
   
   const [incomingCall, setIncomingCall] = useState(null);
+  const [roomId, setRoomId] = useState('');
 
   useEffect(() => {
     if (status === 'idle') {
@@ -34,10 +35,7 @@ const UserList = () => {
       if (type === 'incoming-call') {
         console.log("Incoming call notification received:", data);
         if (data.to == loggedInUserId) {
-          console.log("Incoming call for this user:", data);
           setIncomingCall(data);
-        } else {
-          console.log("Incoming call not for this user:", data.to);
         }
       } else {
         console.log("Unknown message type received:", type);
@@ -63,34 +61,28 @@ const UserList = () => {
     navigate(`/chat/${userId}`);
   };
 
-  const handleVideoCall = (userId) => {
-    console.log("Initiating video call to:", userId);
-    
-    const roomId = `${Math.min(loggedInUserId, userId)}-${Math.max(loggedInUserId, userId)}`;
-  
-    console.log("Logged-in User ID:", loggedInUserId);
-    console.log("Calling User ID:", userId);
-    console.log("Generated Room ID:", roomId);
-  
-    socketRef.current.send(JSON.stringify({
-      type: 'incoming-call',
-      data: {
-        from: loggedInUserId,
-        to: userId,
-        roomId: roomId,
-      },
-    }));
-    console.log("Video call notification sent.");
+  const handleCreateRoom = () => {
+    if (!roomId) {
+      alert("Please enter a room ID.");
+      return;
+    }
 
-    // Wait a short time to ensure the message is sent before navigating
-    setTimeout(() => {
-      navigate(`/video-call/${roomId}`, { state: { isCaller: true } });
-    }, 100);
+    // Navigate to video call with the created room ID
+    navigate(`/video-call/${roomId}`, { state: { isCaller: true } });
+  };
+
+  const handleJoinRoom = () => {
+    if (!roomId) {
+      alert("Please enter a room ID.");
+      return;
+    }
+
+    // Navigate to video call with the joined room ID
+    navigate(`/video-call/${roomId}`, { state: { isCaller: false } });
   };
 
   const handleReceiveCall = () => {
     if (incomingCall) {
-      // Wait a short time to ensure any pending messages are processed
       setTimeout(() => {
         navigate(`/video-call/${incomingCall.roomId}`, { state: { isCaller: false } });
         setIncomingCall(null);
@@ -107,13 +99,22 @@ const UserList = () => {
             <li key={user.id}>
               {user.username} ({user.email})
               <button onClick={() => handleChat(user.id)}>Chat</button>
-              <button onClick={() => handleVideoCall(user.id)}>Video Call</button>
             </li>
           ))
         ) : (
           <li>No other users found</li>
         )}
       </ul>
+
+      <h3>Create or Join Room</h3>
+      <input 
+        type="text" 
+        placeholder="Enter Room ID" 
+        value={roomId} 
+        onChange={(e) => setRoomId(e.target.value)} 
+      />
+      <button onClick={handleCreateRoom}>Create Room</button>
+      <button onClick={handleJoinRoom}>Join Room</button>
 
       {incomingCall && (
         <div>
