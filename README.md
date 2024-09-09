@@ -1,6 +1,4 @@
 
-
-```markdown
 # Social Media Frontend
 
 ## Overview
@@ -35,7 +33,7 @@ This project is a **React** frontend for a social media platform. It provides fe
    ```bash
    git clone https://github.com/KiranBaburaj/socialmedia-frontend.git
    cd socialmedia-frontend
-   ```
+
 
 2. **Install dependencies**:
    ```bash
