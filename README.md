@@ -1,4 +1,4 @@
-To generate a proper `README.md` for your `socialmedia-frontend` repository, here is a structured version based on typical project details:
+
 
 ```markdown
 # Social Media Frontend
@@ -70,9 +70,6 @@ This project is a **React** frontend for a social media platform. It provides fe
 
 You can deploy the production build on platforms like **Netlify** or **Vercel**.
 
-## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-```
 
-This `README.md` structure should work well with your project setup on GitHub.
+
