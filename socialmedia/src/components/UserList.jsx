@@ -69,10 +69,15 @@ const UserList = () => {
 
   // Generate a 6-digit unique room ID
   const generateRoomId = () => {
-    const randomRoomId = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit number
-    return randomRoomId.toString();
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; // Available characters for the room ID
+    let roomId = '';
+    for (let i = 0; i < 6; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length); // Pick a random character
+      roomId += characters[randomIndex];
+    }
+    return roomId;
   };
-
+  
   const handleCreateRoom = () => {
     const newRoomId = generateRoomId();
     setRoomId(newRoomId);  // Set the room ID state with the newly generated room ID
