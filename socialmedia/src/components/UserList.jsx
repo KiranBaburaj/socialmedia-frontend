@@ -67,16 +67,16 @@ const UserList = () => {
 
   const filteredUsers = users.filter(user => user.id !== loggedInUserId);
 
-  const handleChat = (userId) => {
-    navigate(`/chat/${userId}`);
+  // Generate a 6-digit unique room ID
+  const generateRoomId = () => {
+    const randomRoomId = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit number
+    return randomRoomId.toString();
   };
 
   const handleCreateRoom = () => {
-    if (!roomId) {
-      alert("Please enter a room ID.");
-      return;
-    }
-    navigate(`/video-call/${roomId}`, { state: { isCaller: true } });
+    const newRoomId = generateRoomId();
+    setRoomId(newRoomId);  // Set the room ID state with the newly generated room ID
+    navigate(`/video-call/${newRoomId}`, { state: { isCaller: true } });
   };
 
   const handleJoinRoom = () => {
@@ -100,13 +100,20 @@ const UserList = () => {
     <Box sx={{ padding: 2 }}>
       <Navbar />
       <Typography variant="h4" gutterBottom>
-        User List
+        Video call
       </Typography>
 
-      <Paper elevation={3} sx={{ padding: 2, marginTop: 2 }}>
+      <Paper  sx={{ padding: 2, marginTop: 2 }}>
         <Typography variant="h6" gutterBottom>
           Create or Join Room
         </Typography>
+  <div sx={{ padding: 2, margin: 3  }}>
+        <Button variant="contained" color="primary" onClick={handleCreateRoom} sx={{ marginRight: 1 ,marginBottom:4 ,Width: 500}} >
+          Create Room
+        </Button></div>
+        <Button variant="contained" color="secondary" onClick={handleJoinRoom}  sx={{ marginRight: 1 ,marginBottom:4, Width: 500}} >
+          Join Room
+        </Button>
         <TextField 
           label="Enter Room ID" 
           variant="outlined" 
@@ -115,12 +122,6 @@ const UserList = () => {
           onChange={(e) => setRoomId(e.target.value)} 
           sx={{ marginBottom: 2, maxWidth: 300 }} // Adjust size here
         />
-        <Button variant="contained" color="primary" onClick={handleCreateRoom} sx={{ marginRight: 1 }}>
-          Create Room
-        </Button>
-        <Button variant="contained" color="secondary" onClick={handleJoinRoom}>
-          Join Room
-        </Button>
       </Paper>
 
       {incomingCall && (

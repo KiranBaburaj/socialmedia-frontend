@@ -80,7 +80,7 @@ const Login = () => {
         
         {error && (
           <Typography color="error" variant="body2" sx={{ mt: 2 }}>
-            {typeof error === 'string' ? error : error.detail || "An unexpected error occurred."}
+            {typeof error === 'string' ? error : error.detail || "Invalid credentials "}
           </Typography>
         )}
       </form>

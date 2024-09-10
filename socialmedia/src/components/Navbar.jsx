@@ -49,7 +49,7 @@ const Navbar = () => {
               Dashboard
             </Button>
             <Button component={Link} to="/connectroom" color="inherit" startIcon={<ConnectWithoutContactIcon />}>
-              Connect Room
+              Video Chat
             </Button>
             <Button onClick={handleLogout} color="inherit" startIcon={<ExitToAppIcon />}>
               Logout
@@ -74,7 +74,7 @@ const Navbar = () => {
               <DashboardIcon /> Dashboard
             </MenuItem>
             <MenuItem component={Link} to="/connectroom" onClick={handleMenuClose}>
-              <ConnectWithoutContactIcon /> Connect Room
+              <ConnectWithoutContactIcon />  Video Chat
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <ExitToAppIcon /> Logout
